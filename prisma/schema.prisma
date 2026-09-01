@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model OAuthState {
+  state     String   @id
+  verifier  String
+  returnTo  String   @default("/")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id             String       @id @default(cuid())
+  spotifyId      String       @unique
+  displayName    String
+  avatarUrl      String?
+  isGuest        Boolean      @default(false)
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  hostedRooms    Room[]       @relation("HostedRooms")
+  memberships    RoomMember[]
+  addedTracks    RoomTrack[]  @relation("AddedTracks")
+  guesses        Guess[]      @relation("Guesses")
+  guessedBy      Guess[]      @relation("GuessedUsers")
+}
+
+model Room {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  hostUserId   String
+  status       String       @default("lobby")
+  hostDeviceId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  host         User         @relation("HostedRooms", fields: [hostUserId], references: [id])
+  members      RoomMember[]
+  tracks       RoomTrack[]
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  score    Int      @default(0)
+  joinedAt DateTime @default(now())
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model RoomTrack {
+  id              String   @id @default(cuid())
+  roomId          String
+  spotifyTrackId  String
+  trackUri        String
+  trackName       String
+  artistName      String
+  albumArtUrl     String?
+  addedByUserId   String
+  status          String   @default("queued")
+  queuePosition   Int      @default(0)
+  addedAt         DateTime @default(now())
+  playingAt       DateTime?
+  revealedAt      DateTime?
+  spotifyQueuedAt DateTime?
+  room            Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  addedBy         User     @relation("AddedTracks", fields: [addedByUserId], references: [id])
+  guesses         Guess[]
+
+  @@index([roomId, queuePosition])
+}
+
+model Guess {
+  id             String    @id @default(cuid())
+  roomTrackId    String
+  guesserUserId  String
+  guessedUserId  String
+  isCorrect      Boolean
+  points         Int       @default(0)
+  createdAt      DateTime  @default(now())
+  roomTrack      RoomTrack @relation(fields: [roomTrackId], references: [id], onDelete: Cascade)
+  guesser        User      @relation("Guesses", fields: [guesserUserId], references: [id])
+  guessedUser    User      @relation("GuessedUsers", fields: [guessedUserId], references: [id])
+
+  @@unique([roomTrackId, guesserUserId])
+}
