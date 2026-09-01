@@ -56,7 +56,7 @@ import { db } from "./src/lib/db";
 
 const dev = process.env.NODE_ENV !== "production";
 
-const hostname = process.env.HOSTNAME || "0.0.0.0";
+const hostname = process.env.LISTEN_HOST || "0.0.0.0";
 
 const port = parseInt(process.env.PORT || "3000", 10);
 
